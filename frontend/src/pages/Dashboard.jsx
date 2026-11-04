@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import Layout from "../components/Layout";
 import api from "../services/api";
-import { Bell, TrendingUp, Clock, CheckCircle, Calendar, Activity, X } from "lucide-react";
+import { TrendingUp, Clock, CheckCircle, Calendar, Activity } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 
 const Dashboard = () => {
@@ -13,8 +13,6 @@ const Dashboard = () => {
   });
   const [todayCount, setTodayCount] = useState(0);
   const [yesterdayCount, setYesterdayCount] = useState(0);
-  const [notifications, setNotifications] = useState([]);
-  const [open, setOpen] = useState(false);
   const [greeting, setGreeting] = useState("");
 
   useEffect(() => {
@@ -66,47 +64,10 @@ const Dashboard = () => {
       }
     };
 
-    const fetchNotifications = async () => {
-      try {
-        const res = await api.get("/api/notifications");
-        setNotifications(res.data);
-      } catch (err) {
-        console.error("Notification error:", err);
-      }
-    };
-
     if (user) {
       fetchData();
-      fetchNotifications();
     }
-
-    const interval = setInterval(fetchNotifications, 5000);
-    return () => clearInterval(interval);
   }, [user]);
-
-  const unreadCount = notifications.filter((n) => !n.isRead).length;
-
-  const markAsRead = async (id) => {
-    try {
-      await api.put(`/api/notifications/${id}/read`);
-      setNotifications(prev =>
-        prev.map(n => n._id === id ? { ...n, isRead: true } : n)
-      );
-    } catch (error) {
-      console.error("Error marking notification as read:", error);
-    }
-  };
-
-  const markAllAsRead = async () => {
-    try {
-      await api.put("/api/notifications/read-all");
-      setNotifications(prev =>
-        prev.map(n => ({ ...n, isRead: true }))
-      );
-    } catch (error) {
-      console.error("Error marking all as read:", error);
-    }
-  };
 
   return (
     <Layout>
@@ -122,70 +83,6 @@ const Dashboard = () => {
             </p>
           </div>
 
-          {/* Notifications */}
-          <div className="relative">
-            <button
-              onClick={() => setOpen(!open)}
-              className="relative p-2 rounded-xl hover:bg-gray-100 transition-colors"
-            >
-              <Bell className="h-5 w-5 text-gray-600" />
-              {unreadCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs px-1.5 py-0.5 rounded-full min-w-[18px] h-[18px] flex items-center justify-center">
-                  {unreadCount}
-                </span>
-              )}
-            </button>
-
-            {open && (
-              <div className="absolute right-0 mt-2 w-96 bg-white rounded-xl shadow-lg border border-gray-200 z-50 overflow-hidden">
-                <div className="p-4 border-b border-gray-100 flex justify-between items-center">
-                  <h4 className="font-semibold text-gray-800">Notifications</h4>
-                  <div className="flex items-center gap-2">
-                    {notifications.length > 0 && (
-                      <button
-                        onClick={markAllAsRead}
-                        className="text-xs text-blue-600 hover:text-blue-700 transition-colors"
-                      >
-                        Mark all as read
-                      </button>
-                    )}
-                    <button
-                      onClick={() => setOpen(false)}
-                      className="p-1 hover:bg-gray-100 rounded-lg transition-colors"
-                    >
-                      <X className="h-4 w-4 text-gray-400" />
-                    </button>
-                  </div>
-                </div>
-
-                <div className="max-h-96 overflow-y-auto">
-                  {notifications.length === 0 ? (
-                    <div className="p-8 text-center">
-                      <Bell className="h-8 w-8 text-gray-300 mx-auto mb-2" />
-                      <p className="text-gray-400 text-sm">No notifications</p>
-                    </div>
-                  ) : (
-                    notifications.map((n) => (
-                      <div
-                        key={n._id}
-                        onClick={() => !n.isRead && markAsRead(n._id)}
-                        className={`p-4 border-b border-gray-50 cursor-pointer transition-colors ${
-                          n.isRead ? "bg-white" : "bg-blue-50/30 hover:bg-blue-50/50"
-                        }`}
-                      >
-                        <p className={`text-sm ${n.isRead ? "text-gray-600" : "text-gray-800 font-medium"}`}>
-                          {n.message}
-                        </p>
-                        <span className="text-xs text-gray-400 mt-1 block">
-                          {new Date(n.createdAt).toLocaleString()}
-                        </span>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
         </div>
 
         {/* Stats Cards */}

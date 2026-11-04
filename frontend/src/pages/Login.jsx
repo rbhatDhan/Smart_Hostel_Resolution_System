@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { Building2, Mail, Lock, Eye, EyeOff, ArrowRight } from "lucide-react";
 
@@ -12,9 +12,10 @@ const Login = () => {
 
   const { login } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const validateEmail = (email) => {
-    return /^[a-zA-Z0-9._%+-]+@gmail\.com$/.test(email);
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   };
 
   const handleSubmit = async (e) => {
@@ -22,7 +23,7 @@ const Login = () => {
     setError("");
 
     if (!validateEmail(email)) {
-      setError("Only Gmail addresses are allowed");
+      setError("Enter a valid email address");
       return;
     }
 
@@ -38,10 +39,17 @@ const Login = () => {
     if (result.success) {
       const role = result.user?.role?.toLowerCase();
 
-      if (role === "admin") {
-        navigate("/admin");
+      // go back to the page the user originally wanted, if any
+      const from = location.state?.from?.pathname;
+
+      if (from && from !== "/login") {
+        navigate(from, { replace: true });
+      } else if (role === "admin") {
+        navigate("/admin", { replace: true });
+      } else if (role === "warden") {
+        navigate("/all-complaints", { replace: true });
       } else {
-        navigate("/all-complaints");
+        navigate("/", { replace: true });
       }
     } else {
       setError(result.error);

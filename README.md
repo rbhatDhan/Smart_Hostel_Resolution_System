@@ -3,8 +3,8 @@
 A MERN-stack complaint management system for college hostels, with Gemini-powered
 AI features layered on top of the existing complaint workflow.
 
-- **Backend:** Node.js, Express 5, MongoDB (Mongoose), JWT auth
-- **Frontend:** React (Vite), Tailwind CSS, Chart.js
+- **Backend:** Node.js, Express 5, MongoDB (Mongoose), JWT auth, Socket.IO, node-cron, Zod
+- **Frontend:** React (Vite), Tailwind CSS, Chart.js, socket.io-client
 - **AI:** Google Gemini API (server-side only — the key never touches the browser). Gemini's free tier requires no credit card, which is why this project uses it instead of a paid-only provider.
 
 ---
@@ -256,3 +256,48 @@ frontend/
   demo LLM reasoning over structured data, not just text generation.
 - All AI calls fail soft — worth mentioning that you deliberately designed for
   the AI service being flaky/unavailable, which is a realistic production concern.
+
+
+---
+
+## 🏭 Production-readiness
+
+### Security & access control
+- **Role-based access (student / warden / admin)** enforced on the API *and* in the UI (`ProtectedRoute allowedRoles`).
+- The JWT only carries the user id; the **role is re-read from the database on every request**, so demoting or deactivating a user takes effect immediately.
+- Self-registration always creates a **student** (a `role` field in the body is ignored). Wardens/admins are created by an admin (`POST /api/auth/users`) or by `npm run seed`.
+- **Ownership checks** on every complaint action (a student can only edit/cancel/read their own complaints).
+- Input validation with **Zod**, central error handler, consistent JSON error format.
+- `helmet`, **rate limiting** (general, login/register brute-force, AI quota), locked-down **CORS**, request body size limit, constant-time login to avoid user enumeration, bcrypt cost 12.
+- Env validation at startup, graceful shutdown, `/health` endpoint.
+
+### Notifications
+- Stored in MongoDB (auto-expire after 90 days) with a `type` (`complaint_created`, `status_update`, `complaint_resolved`, `urgent_complaint`, `assignment`, `sla_warning`, `sla_breach`, ...).
+- **Real-time push via Socket.IO** (JWT-authenticated, one private room per user) with a 60 s polling fallback.
+- Triggers: complaint submitted (student + all staff), AI-flagged urgent, status change, assignment, SLA warning, SLA breach.
+
+### SLA monitor
+`backend/src/services/slaService.js` warns staff `SLA_WARNING_MINUTES` before a deadline and escalates (student + staff) once it is breached. Each alert fires **exactly once** (atomic claim), so overlapping runs / several instances cannot double-notify.
+- **Long-running host (Render, Railway, VPS, Docker):** runs automatically via `node-cron` (`SLA_CRON_SCHEDULE`, default every 10 min).
+- **Serverless / sleeping host:** call `GET|POST /api/cron/sla` with `Authorization: Bearer $CRON_SECRET` from Vercel Cron, the included GitHub Action, or cron-job.org.
+
+### Other
+- Complaint **status history** (audit trail), **assignment** to staff, status-transition rules, optional **pagination + filters** (`?page=1&limit=20&status=pending&category=WiFi&search=fan`).
+- **Tests:** `cd backend && npm test` (28 unit/API tests, no DB needed). Full integration suite: `TEST_MONGO_URI=mongodb://127.0.0.1:27017/hostel_test npm test`.
+- **CI** (GitHub Actions), **Dockerfile + docker-compose**, `.env.example` files, SPA rewrite for Vercel.
+
+### API additions
+| Method | Route | Access |
+|---|---|---|
+| POST | `/api/auth/users` | admin – create warden/admin/student |
+| PATCH | `/api/auth/users/:id` | admin – change role / activate / deactivate |
+| GET | `/api/complaints/:id` | owner or staff |
+| PUT | `/api/complaints/:id/assign` | warden/admin |
+| PUT | `/api/notifications/:id/read`, `/read-all` | owner |
+| GET/POST | `/api/cron/sla` | `CRON_SECRET` |
+| GET | `/health` | public |
+
+### Deployment
+- **Frontend → Vercel** (root dir `frontend`, env `VITE_API_URL=https://<your-api>`).
+- **Backend → Render / Railway** (root dir `backend`, build `npm install`, start `npm start`). Set the variables from `backend/.env.example`, with `CLIENT_URL` = your Vercel URL.
+- Then run `npm run seed` once (Render shell, or locally with the production `MONGO_URI`).

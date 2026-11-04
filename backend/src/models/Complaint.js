@@ -73,6 +73,27 @@ const complaintSchema = new mongoose.Schema(
       default: "on-time",
     },
 
+    // Staff member working on this complaint
+    assignedTo: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
+
+    // Audit trail of every status change
+    statusHistory: [
+      {
+        _id: false,
+        status: { type: String, required: true },
+        changedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+        note: { type: String },
+        at: { type: Date, default: Date.now },
+      },
+    ],
+
+    // Flags used by the SLA monitor so each alert is sent only once
+    slaWarningNotified: { type: Boolean, default: false },
+    slaBreachNotified: { type: Boolean, default: false },
+
     // AI metadata
     ai: {
       suggestedCategory: {
@@ -110,6 +131,10 @@ const complaintSchema = new mongoose.Schema(
   }
 );
 
+
+complaintSchema.index({ studentId: 1, createdAt: -1 });
+complaintSchema.index({ status: 1, slaDeadline: 1 });
+complaintSchema.index({ createdAt: -1 });
 
 // Virtual field to get room number from populated user
 complaintSchema.virtual("roomNumber").get(function () {

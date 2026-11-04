@@ -1,34 +1,45 @@
 import express from "express";
-import { createComplaint, 
-  getMyComplaints, 
+import mongoose from "mongoose";
+import {
+  createComplaint,
+  getMyComplaints,
   getAllComplaints,
-  updateComplaintStatus ,
+  getComplaintById,
+  updateComplaintStatus,
+  assignComplaint,
   cancelComplaint,
-   editComplaint   } from "../controllers/complaintController.js";
+  editComplaint,
+} from "../controllers/complaintController.js";
 import protect from "../middleware/authMiddleware.js";
 import authorizeRoles from "../middleware/roleMiddleware.js";
-
+import { validate } from "../middleware/validate.js";
+import AppError from "../utils/AppError.js";
+import {
+  createComplaintSchema,
+  editComplaintSchema,
+  updateStatusSchema,
+  assignSchema,
+  listQuerySchema,
+} from "../schemas/complaintSchemas.js";
 
 const router = express.Router();
 
-// Student creates complaint
-router.post("/", protect, createComplaint);
-// Get logged-in user's complaints
-router.get("/my", protect, getMyComplaints);
-// Warden/Admin: view all complaints
-router.get("/", protect, authorizeRoles("warden", "admin"), getAllComplaints);
-// Warden/Admin: update complaint status
-router.put(
-  "/:id",
-  protect,
-  authorizeRoles("warden", "admin"),
-  updateComplaintStatus
+router.param("id", (req, res, next, id) =>
+  mongoose.isValidObjectId(id) ? next() : next(new AppError("Invalid id", 400))
 );
 
-// Student cancels complaint
-router.put("/:id/cancel", protect, cancelComplaint);
+// ---- Student ----
+router.post("/", protect, authorizeRoles("student"), validate(createComplaintSchema), createComplaint);
+router.get("/my", protect, validate(listQuerySchema, "query"), getMyComplaints);
+router.put("/:id/cancel", protect, authorizeRoles("student"), cancelComplaint);
+router.put("/:id/edit", protect, authorizeRoles("student"), validate(editComplaintSchema), editComplaint);
 
-// Student edits complaint (within 15 mins)
-router.put("/:id/edit", protect, editComplaint);
+// ---- Warden / Admin ----
+router.get("/", protect, authorizeRoles("warden", "admin"), validate(listQuerySchema, "query"), getAllComplaints);
+router.put("/:id/assign", protect, authorizeRoles("warden", "admin"), validate(assignSchema), assignComplaint);
+router.put("/:id", protect, authorizeRoles("warden", "admin"), validate(updateStatusSchema), updateComplaintStatus);
+
+// ---- Single complaint (owner or staff - checked in controller) ----
+router.get("/:id", protect, getComplaintById);
 
 export default router;

@@ -39,6 +39,7 @@ async function callGemini(system, userMessage, maxOutputTokens = 400) {
     `${GEMINI_API_URL}?key=${process.env.GEMINI_API_KEY}`,
     {
       method: "POST",
+      signal: AbortSignal.timeout(15000), // never hang a request on a slow AI call
       headers: {
         "Content-Type": "application/json",
       },
@@ -360,6 +361,7 @@ Do not simply repeat every number.`;
     `${GEMINI_API_URL}?key=${process.env.GEMINI_API_KEY}`,
     {
       method: "POST",
+      signal: AbortSignal.timeout(15000),
 
       headers: {
         "Content-Type": "application/json",

@@ -2,6 +2,13 @@
 // sla.js
 // Utility functions for calculating live SLA information.
 
+// SLA hours by category; safety-critical (urgent) complaints are capped at 6h.
+export const computeSlaHours = (category, isUrgent = false) => {
+  let hours = category === "Electrical" || category === "Plumbing" ? 48 : 72;
+  if (isUrgent) hours = Math.min(hours, 6);
+  return hours;
+};
+
 export const computeSlaStatus = (complaint) => {
   if (!complaint.slaDeadline) return "on-time";
 

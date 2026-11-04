@@ -1,0 +1,27 @@
+# Local full-stack backend: API + MongoDB
+#   docker compose up --build
+#   docker compose exec api npm run seed:demo
+services:
+  mongo:
+    image: mongo:7
+    restart: unless-stopped
+    volumes:
+      - mongo-data:/data/db
+
+  api:
+    build: ./backend
+    restart: unless-stopped
+    depends_on:
+      - mongo
+    ports:
+      - "5000:5000"
+    environment:
+      MONGO_URI: mongodb://mongo:27017/hostel
+      JWT_SECRET: ${JWT_SECRET:-change-me-change-me-change-me-change-me}
+      CLIENT_URL: ${CLIENT_URL:-http://localhost:5173}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      CRON_SECRET: ${CRON_SECRET:-}
+      DNS_SERVERS: system
+
+volumes:
+  mongo-data:

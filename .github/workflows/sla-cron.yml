@@ -1,0 +1,25 @@
+name: SLA monitor (HTTP trigger)
+
+# OPTIONAL. Only needed if your backend cannot run its own scheduler
+# (e.g. a free host that sleeps, or a serverless deployment).
+# Add repository secrets:  API_URL (https://your-api.onrender.com)  and  CRON_SECRET
+# GitHub may delay scheduled runs by a few minutes under load.
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+jobs:
+  sla-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call /api/cron/sla
+        env:
+          API_URL: ${{ secrets.API_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$API_URL" ] || [ -z "$CRON_SECRET" ]; then
+            echo "API_URL / CRON_SECRET secrets not set - skipping"; exit 0
+          fi
+          curl --fail --silent --show-error --max-time 60 --retry 2 \
+            -H "Authorization: Bearer $CRON_SECRET" "$API_URL/api/cron/sla"

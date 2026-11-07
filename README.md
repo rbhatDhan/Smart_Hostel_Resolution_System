@@ -284,7 +284,7 @@ frontend/
 ### Other
 - Complaint **status history** (audit trail), **assignment** to staff, status-transition rules, optional **pagination + filters** (`?page=1&limit=20&status=pending&category=WiFi&search=fan`).
 - **Tests:** `cd backend && npm test` (28 unit/API tests, no DB needed). Full integration suite: `TEST_MONGO_URI=mongodb://127.0.0.1:27017/hostel_test npm test`.
-- **CI** (GitHub Actions), **Dockerfile + docker-compose**, `.env.example` files, SPA rewrite for Vercel.
+- **CI** (GitHub Actions), **one-command Docker setup** (`docker compose up --build`, see [DOCKER.md](DOCKER.md)), `.env.example` files, SPA rewrite for Vercel.
 
 ### API additions
 | Method | Route | Access |
@@ -296,6 +296,13 @@ frontend/
 | PUT | `/api/notifications/:id/read`, `/read-all` | owner |
 | GET/POST | `/api/cron/sla` | `CRON_SECRET` |
 | GET | `/health` | public |
+
+### Run with Docker
+```bash
+cp .env.example .env
+docker compose up --build   # then open http://localhost:8080
+```
+Starts MongoDB, the API (with SLA cron + live notifications) and the React app behind nginx. Details: [DOCKER.md](DOCKER.md).
 
 ### Deployment
 - **Frontend → Vercel** (root dir `frontend`, env `VITE_API_URL=https://<your-api>`).

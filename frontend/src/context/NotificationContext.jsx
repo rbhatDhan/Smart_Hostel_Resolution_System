@@ -39,7 +39,7 @@ export const NotificationProvider = ({ children }) => {
     fetchNotifications();
 
     const token = localStorage.getItem("token");
-    const socket = io(API_URL, { auth: { token }, transports: ["websocket", "polling"] });
+    const socket = io(API_URL || undefined, { auth: { token }, transports: ["websocket", "polling"] });
     socketRef.current = socket;
 
     socket.on("connect", () => setConnected(true));

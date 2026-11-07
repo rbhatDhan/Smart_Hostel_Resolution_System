@@ -43,3 +43,10 @@ Backend tests: `cd backend && npm test`
 - Render / Railway / VPS / Docker: nothing to do - the scheduler starts with the server.
 - Vercel (serverless) cannot keep a scheduler running. Host the API on Render/Railway and the frontend on Vercel,
   or call `GET /api/cron/sla` (header `Authorization: Bearer <CRON_SECRET>`) from Vercel Cron / the included GitHub Action.
+
+## Docker (optional)
+To run everything in containers instead, see `DOCKER.md`:
+```bash
+cp .env.example .env
+docker compose up --build
+```

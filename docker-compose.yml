@@ -1,26 +1,71 @@
-# Local full-stack backend: API + MongoDB
+# Whole app in one command:
+#   cp .env.example .env      (then edit JWT_SECRET etc.)
 #   docker compose up --build
-#   docker compose exec api npm run seed:demo
+# Open http://localhost:8080
+#
+# Services: mongo (database) -> api (Express + SLA cron + Socket.IO) -> web (React + nginx)
+#           seed (one-shot: creates the admin / demo accounts, then exits)
 services:
   mongo:
     image: mongo:7
     restart: unless-stopped
     volumes:
       - mongo-data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    # ports: ["27017:27017"]   # uncomment to inspect the DB with MongoDB Compass
 
   api:
     build: ./backend
     restart: unless-stopped
     depends_on:
-      - mongo
-    ports:
-      - "5000:5000"
+      mongo:
+        condition: service_healthy
     environment:
-      MONGO_URI: mongodb://mongo:27017/hostel
-      JWT_SECRET: ${JWT_SECRET:-change-me-change-me-change-me-change-me}
-      CLIENT_URL: ${CLIENT_URL:-http://localhost:5173}
+      NODE_ENV: production
+      PORT: 5000
+      # Use the bundled Mongo, or set MONGO_URI in .env to use Atlas instead
+      MONGO_URI: ${MONGO_URI:-mongodb://mongo:27017/hostel}
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env (copy .env.example to .env)}
+      CLIENT_URL: ${CLIENT_URL:-http://localhost:8080,http://127.0.0.1:8080}
+      ALLOWED_EMAIL_DOMAINS: ${ALLOWED_EMAIL_DOMAINS:-gmail.com}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-}
       CRON_SECRET: ${CRON_SECRET:-}
+      ENABLE_CRON: "true"
+      SLA_CRON_SCHEDULE: ${SLA_CRON_SCHEDULE:-*/10 * * * *}
+      DNS_SERVERS: system
+    ports:
+      - "5000:5000" # optional: direct API access (Postman, curl)
+
+  web:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_URL: ""
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      - "${WEB_PORT:-8080}:80"
+
+  seed:
+    build: ./backend
+    command: ["node", "scripts/seed.js"]
+    restart: "no"
+    depends_on:
+      mongo:
+        condition: service_healthy
+    environment:
+      MONGO_URI: ${MONGO_URI:-mongodb://mongo:27017/hostel}
+      ADMIN_NAME: ${ADMIN_NAME:-Hostel Admin}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@example.com}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-ChangeMe123!}
+      SEED_DEMO: ${SEED_DEMO:-true}
       DNS_SERVERS: system
 
 volumes:

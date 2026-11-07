@@ -34,7 +34,7 @@ try {
     role: "admin",
   });
 
-  if (process.argv.includes("--demo")) {
+  if (process.argv.includes("--demo") || process.env.SEED_DEMO === "true") {
     await upsert({ name: "Demo Warden", email: "warden@example.com", password: "Warden@123", role: "warden" });
     await upsert({ name: "Demo Student", email: "student@example.com", password: "Student@123", role: "student", roomNumber: "A-101" });
   }

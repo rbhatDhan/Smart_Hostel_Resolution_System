@@ -1,6 +1,7 @@
 import axios from 'axios';
 
-export const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:5000').trim().replace(/\/$/, '');
+// An empty VITE_API_URL means "same origin" (used by the Docker/nginx setup)
+export const API_URL = (import.meta.env.VITE_API_URL ?? 'http://localhost:5000').trim().replace(/\/$/, '');
 
 const api = axios.create({
   baseURL: API_URL,
